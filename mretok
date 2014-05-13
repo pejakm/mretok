@@ -1,0 +1,197 @@
+#!/bin/sh
+
+# Skripta za prikaz mrežnog protoka podataka (mretok)
+# © Mladen Pejaković <pejakm@autistici.org>, 2013, 2014.
+
+NAME="Bandwith data display"
+VER="0.1"
+
+# vars
+if [ "$2" == "" ] ; then
+ int="eth0"
+else
+ int=$2
+fi
+
+version() {
+    echo "		$NAME"
+    echo "			v$VER"
+    echo
+    echo "This program may be freely redistributed under the terms "
+    echo "of the GNU General Public License either version 3 of the "
+    echo "License, or (at your option) any later version."
+    echo
+    exit
+}
+
+usage() {
+    echo "Usage: mretok <options> [interface]"
+    echo "Options:"
+    echo "  -h,  --help	  this"
+    echo "  -V,  --ver	  version and license info"
+    echo "  -d		  show total downloaded data [auto]"
+    echo "   -db		   show total downloaded data [bytes]"
+    echo "   -dk		   show total downloaded data [KiB]"
+    echo "   -dm		   show total downloaded data [MiB]"
+    echo "   -dg		   show total downloaded data [GiB]"
+    echo "   -dt		   show total downloaded data [TiB]"
+    echo "  -u		  show total uploaded data [auto]"
+    echo "   -ub		   show total uploaded data [bytes]"
+    echo "   -uk		   show total uploaded data [KiB]"
+    echo "   -um		   show total uploaded data [MiB]"
+    echo "   -ug		   show total uploaded data [GiB]"
+    echo "   -ut		   show total uploaded data [TiB]"
+    echo "  -g		  show total amount of data with IP address"
+    echo "   -ge		   also display external IP (via dyndns.com)"
+    echo
+    echo "If [interface] is not set, 'eth0' will be used by default."
+    echo
+    echo "Example:"
+    echo " mretok -d wlan0"
+    echo "will display total downlaoded data on wlan0 interface."
+    echo
+    echo "Note: For -ge option you need to have 'lynx' installed!"
+    exit
+}
+
+getd() {
+ cat /sys/class/net/$int/statistics/rx_bytes
+}
+
+getu() {
+ cat /sys/class/net/$int/statistics/tx_bytes
+}
+
+down() {
+ cnt1=`getd | wc -m`
+ if [ $cnt1 -ge 8 ] && [ $cnt1 -lt 11 ] ; then
+    dj1="1048576"; pr1="MiB";
+ elif [ $cnt1 -ge 11 ] && [ $cnt1 -lt 14 ] ; then
+    dj1="1073741824"; pr1="GiB";
+ elif [ $cnt1 -ge 14 ] ; then
+    dj1="1099511627776"; pr1="TiB";
+ else
+    dj1="1024"; pr1="KiB";
+ fi
+ echo `getd` $dj1 $pr1 | awk '{printf ("%.2f", $1 / $2); print " "$3}';
+ }
+
+up() {
+ cnt2=`getu | wc -m`
+ if [ $cnt2 -ge 8 ] && [ $cnt2 -lt 11 ] ; then
+    dj2="1048576"; pr2="MiB";
+ elif [ $cnt2 -ge 11 ] && [ $cnt2 -lt 14 ] ; then
+    dj2="1073741824"; pr2="GiB";
+ elif [ $cnt2 -ge 14 ] ; then
+    dj2="1099511627776"; pr2="TiB";
+ else
+    dj2="1024"; pr2="KiB";
+ fi
+ echo `getu` $dj2 $pr2 | awk '{printf ("%.2f", $1 / $2); print " "$3}';
+}
+
+glob() {
+ echo "Total amount of data in this session"
+ echo "------------------------------------"
+ echo "Interface  : $int"
+ echo -n "Uploaded   : "
+ up
+ echo -n "Downloaded : "
+ down
+ echo -n "IP address : "
+ ip route get 1 | awk '{print $NF;exit}'
+}
+
+extip() {
+ glob
+ echo -n "External IP: "
+if [ -f "/usr/bin/lynx" ]; then
+ lynx -dump "http://checkip.dyndns.com:8245/" | awk '$1=="Current" {print $4}'
+ else echo " Error: Lynx is not installed!"
+fi
+}
+
+dryrun() {
+ echo "$NAME v$VER"
+ echo
+ echo "Nothing to do, use --help to see available switches."
+ exit 0
+}
+
+case "$1" in
+ -h)
+   usage
+   exit 0
+  ;;
+  --help)
+   usage
+   exit 0
+  ;;
+  -V)
+   version
+   exit 0
+  ;;
+  --ver)
+   version
+   exit 0
+  ;;
+  -d)
+    down
+    exit 0
+  ;;
+  -db)
+    echo `getd` "B";
+    exit 0
+  ;;
+  -dk)
+    getd | awk '{printf ("%.3f", $1 / 1024); print " KiB"}';
+    exit 0
+  ;;
+  -dm)
+    getd | awk '{printf ("%.3f", $1 / 1048576); print " MiB"}';
+    exit 0
+  ;;
+  -dg)
+    getd | awk '{printf ("%.3f", $1 / 1073741824); print " GiB"}';
+    exit 0
+  ;;
+  -dt)
+    getd | awk '{printf ("%.3f", $1 / 1099511627776); print " TiB"}';
+    exit 0
+  ;;
+  -u)
+    up
+    exit 0
+  ;;
+  -ub)
+    echo `getu` "B";
+    exit 0
+  ;;
+  -uk)
+    getu | awk '{printf ("%.3f", $1 / 1024); print " KiB"}';
+    exit 0
+  ;;
+  -um)
+    getu | awk '{printf ("%.3f", $1 / 1048576); print " MiB"}';
+    exit 0
+  ;;
+  -ug)
+    getu | awk '{printf ("%.3f", $1 / 1073741824); print " GiB"}';
+    exit 0
+  ;;
+  -ut)
+    getu | awk '{printf ("%.3f", $1 / 1099511627776); print " TiB"}';
+    exit 0
+  ;;
+  -g)
+    glob
+    exit 0
+  ;;
+  -ge)
+    extip
+    exit 0
+  ;;
+  *)
+  dryrun
+  ;;
+esac
