@@ -7,7 +7,7 @@ NAME="Bandwith data display"
 VER="0.1"
 
 # vars
-if [ "$2" == "" ] ; then
+if [ "$2" = "" ] ; then
  int="eth0"
 else
  int=$2
